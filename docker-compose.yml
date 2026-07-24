@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/tradingdb
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=tradingdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Catatan: mt5-connector sebaiknya dijalankan secara native di Windows
+  # karena library MetaTrader5 Python hanya mendukung OS Windows.
+  # Kita bisa menjalankannya terpisah dari Docker jika Docker berjalan di WSL/Linux container.
+
+volumes:
+  postgres_data:

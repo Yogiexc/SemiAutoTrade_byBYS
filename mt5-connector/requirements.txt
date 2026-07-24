@@ -1,0 +1,7 @@
+MetaTrader5
+pandas
+numpy
+python-dotenv
+google-genai
+pydantic
+requests
