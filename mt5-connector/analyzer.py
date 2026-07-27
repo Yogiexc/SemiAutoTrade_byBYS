@@ -152,6 +152,10 @@ def check_session() -> dict:
     """
     now = datetime.datetime.now()
     hour = now.hour
+    weekday = now.weekday() # 0=Senin, 1=Selasa, ..., 5=Sabtu, 6=Minggu
+    
+    if weekday >= 5: # Sabtu & Minggu
+        return {"can_trade": False, "session": "Weekend (Market Closed)"}
     
     is_london = 15 <= hour <= 23
     is_ny = (20 <= hour <= 23) or (0 <= hour <= 4)

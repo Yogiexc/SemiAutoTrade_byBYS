@@ -72,20 +72,29 @@ Setelah terkoneksi, Python bisa menyedot jutaan baris *historical data* dalam se
 
 3. **Siapkan Telegram Bot (Penting!)**
    - Buat bot lewat `@BotFather` di Telegram.
-   - Buat file `.env` di dalam folder `mt5-connector`.
+   - Buat file `.env` di dalam folder `mt5-connector` (dan `mt5-scalper`).
    - Isi file `.env` dengan format:
      ```env
      TELEGRAM_BOT_TOKEN=token_bot_kamu_di_sini
      TELEGRAM_CHAT_ID=chat_id_kamu_di_sini
      ```
 
-4. **Jalankan Bot**
+4. **Pilih Mode Trading dan Jalankan Bot**
    - Pastikan aplikasi **MetaTrader 5 Windows** sedang terbuka dan sudah *Login*.
    - Nyalakan tombol **Algo Trading** (AutoTrading) di menu atas MT5.
-   - Buka terminal, masuk ke folder `mt5-connector`, dan ketik:
-     ```bash
-     python main.py
-     ```
+   - Buka terminal, dan pilih mode mana yang ingin kamu jalankan:
+
+   **Opsi A: SNIPER MODE (Aman, Santai, H4/M15)**
+   ```bash
+   cd mt5-connector
+   python main.py
+   ```
+
+   **Opsi B: SCALPER MODE (Barbar, Cepat, HFT M1)**
+   ```bash
+   cd mt5-scalper
+   ..\mt5-connector\venv\Scripts\python.exe main.py
+   ```
 
 ---
 
