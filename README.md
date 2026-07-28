@@ -28,9 +28,14 @@ Sistem ini dibangun berdasarkan 4 Pilar Utama layaknya manajemen dana profesiona
    - **FVG (Fair Value Gap)**: Mendeteksi anomali harga dan likuiditas akibat HFT (*High-Frequency Trading*).
 
 4. **💰 Pilar 4: Trade Management & Telegram Bot**
-   - **Magic Number (777)**: Bot tidak akan mengganggu order manual milikmu.
+   - **Magic Number (777/888)**: Bot tidak akan mengganggu order manual milikmu.
    - **Auto Break-Even (Trailing Stop)**: Memindahkan Stop Loss ke harga Entry secara otomatis jika sudah *profit* (uangmu 100% aman).
    - **Telegram Reports**: Mengirimkan sinyal `WAIT`, `TARGET ACQUIRED`, `POSITION OPENED`, hingga 📊 **DAILY REPORT** (Win Rate & Profit Harian) langsung ke HP-mu!
+
+5. **📊 Pilar 5: Institutional Grade Quant Data (NEW)**
+   - **Performance Analyzer (Logger V2)**: Melacak otomatis setiap metrik *trading* (RSI, ADX, Spread, Trend H4) ke dalam `performance_history.csv` untuk keperluan evaluasi *Quant*.
+   - **Tracking MAE & MFE**: Menganalisis *Floating Loss* terdalam (MAE) dan *Floating Profit* tertinggi (MFE) untuk menyempurnakan penempatan *Stop Loss* & *Take Profit*.
+   - **Show-Off Mode (Saklar Pamer)**: Opsi rahasia untuk melonggarkan keamanan (*cooldown* 10 detik, abaikan *sideways*) khusus untuk keperluan demo/pamer ke teman, tanpa harus mengubah *code* inti.
 
 ---
 

@@ -132,7 +132,7 @@ def evaluate_sniper_strategy(symbol: str, data: dict) -> tuple:
     if not max_pos_check["can_trade"]:
         reasons.append(max_pos_check["reason"])
         
-    daily_loss_check = check_daily_loss(max_loss_percent=-3.0)
+    daily_loss_check = check_daily_loss(max_loss_percent=-50.0) # Dilonggarkan sementara untuk testing malam ini
     if not daily_loss_check["can_trade"]:
         reasons.append(daily_loss_check["reason"])
         

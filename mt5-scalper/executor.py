@@ -24,6 +24,15 @@ def execute_trade(symbol: str, direction: str, sl_price: float, tp_price: float,
     order_type = mt5.ORDER_TYPE_BUY if direction == "BUY" else mt5.ORDER_TYPE_SELL
     price = tick.ask if direction == "BUY" else tick.bid
     
+    # Tentukan filling mode berdasarkan broker (1 = FOK, 2 = IOC)
+    filling_type = mt5.ORDER_FILLING_FOK
+    if symbol_info.filling_mode & 1:
+        filling_type = mt5.ORDER_FILLING_FOK
+    elif symbol_info.filling_mode & 2:
+        filling_type = mt5.ORDER_FILLING_IOC
+    else:
+        filling_type = mt5.ORDER_FILLING_RETURN
+        
     # Setup Order Request
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -35,9 +44,9 @@ def execute_trade(symbol: str, direction: str, sl_price: float, tp_price: float,
         "tp": tp_price,
         "deviation": 20,
         "magic": 888,
-        "comment": "Sniper Algo Trade",
+        "comment": "Scalper Algo Trade",
         "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC,
+        "type_filling": filling_type,
     }
 
     # Kirim order

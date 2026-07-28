@@ -147,6 +147,40 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     atr = tr.rolling(window=period).mean()
     return atr
 
+def calculate_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Menghitung Average Directional Index (ADX) untuk mendeteksi kekuatan trend"""
+    high = df['high']
+    low = df['low']
+    close = df['close'].shift(1)
+    
+    # Calculate +DM and -DM
+    up_move = high.diff()
+    down_move = -low.diff()
+    
+    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+    
+    # Convert to pandas Series
+    plus_dm = pd.Series(plus_dm, index=df.index)
+    minus_dm = pd.Series(minus_dm, index=df.index)
+    
+    # Calculate True Range
+    tr1 = high - low
+    tr2 = (high - close).abs()
+    tr3 = (low - close).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    
+    # Calculate smoothed TR, +DM, -DM using Wilder's smoothing (EMA with alpha=1/period)
+    atr = tr.ewm(alpha=1/period, adjust=False).mean()
+    plus_di = 100 * (plus_dm.ewm(alpha=1/period, adjust=False).mean() / atr)
+    minus_di = 100 * (minus_dm.ewm(alpha=1/period, adjust=False).mean() / atr)
+    
+    # Calculate DX and ADX
+    dx = (abs(plus_di - minus_di) / abs(plus_di + minus_di)) * 100
+    adx = dx.ewm(alpha=1/period, adjust=False).mean()
+    
+    return adx
+
 import datetime
 def check_session() -> dict:
     """
