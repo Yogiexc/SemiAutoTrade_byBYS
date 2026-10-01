@@ -1,0 +1,32 @@
+{
+    "version": "HFT_PRO_V1",
+    "description": "High Frequency Trading Mode based on M1 with 30s Cooldown and 5 layers limit",
+    "parameters": {
+        "batas_adx": 20,
+        "batas_cooldown": 30,
+        "min_distance_pips": 5,
+        "max_layers": 5,
+        "min_score": 70,
+        "lot_sizes": [
+            0.05,
+            0.04,
+            0.03,
+            0.02,
+            0.01
+        ],
+        "trailing_start_pips": 2.0,
+        "trailing_step_pips": 1.0,
+        "hard_filters": {
+            "rsi_oversold": 30,
+            "rsi_overbought": 70,
+            "candle_reversals_buy_block": [
+                "Shooting Star",
+                "Bearish Engulfing"
+            ],
+            "candle_reversals_sell_block": [
+                "Hammer",
+                "Bullish Engulfing"
+            ]
+        }
+    }
+}
