@@ -4,11 +4,12 @@ import time
 from datetime import datetime, timedelta
 
 # =========================================================
-# SAKLAR MODE PAMER (SHOW-OFF MODE)
-# Ganti ke True jika ingin pamer ke teman (Bot akan abaikan filter sideways & cooldown)
-# Kembalikan ke False untuk trading serius mengumpulkan data kuantitatif
 # =========================================================
-MODE_PAMER = False
+# TRADING MODE SELECTION
+# Opsi 1: "HFT_PRO" (High Frequency Trading - Satset, Lot Berjenjang 5 Layer, Trailing 2 Pips)
+# Opsi 2: "SWING_SAFE" (Aman, Cooldown 5 Menit, Max 3 Layer, Trailing 5 Pips)
+# =========================================================
+TRADING_MODE = "HFT_PRO"
 
 def initialize_mt5():
     if not mt5.initialize():
@@ -105,7 +106,7 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
     if not session_info['can_trade']:
         reasons.append(f"Di luar jam trading (Sesi: {session_info['session']})")
         
-    batas_adx = 10 if MODE_PAMER else 25
+    batas_adx = 20 if TRADING_MODE == "HFT_PRO" else 25
     if adx_m1 < batas_adx:
         reasons.append(f"Sideways Detected! ADX rendah ({adx_m1:.2f} < {batas_adx}), Dilarang Entry!")
         
@@ -122,9 +123,9 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
             reasons.append(f"Bahaya Reversal! Muncul candle naik ({current_candle}). Dilarang SELL!")
         
     import time
-    batas_cooldown = 10 if MODE_PAMER else 300
+    batas_cooldown = 30 if TRADING_MODE == "HFT_PRO" else 300
     if time.time() - last_entry_time < batas_cooldown: 
-        waktu_tunggu = "10 Detik" if MODE_PAMER else "5 Menit"
+        waktu_tunggu = "30 Detik" if TRADING_MODE == "HFT_PRO" else "5 Menit"
         reasons.append(f"Masih dalam masa Cooldown (Tunggu {waktu_tunggu} sejak open terakhir)")
         
     num_positions = len(open_positions) if open_positions else 0
@@ -132,8 +133,9 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         last_pos_price = open_positions[-1].price_open
         point = mt5.symbol_info(symbol).point
         distance_points = abs(current_price - last_pos_price) / point
-        if distance_points < 200: # 20 pips distance
-            reasons.append(f"Jarak dengan layer sebelumnya terlalu dekat ({distance_points:.0f} pts < 200 pts)")
+        min_distance = 50 if TRADING_MODE == "HFT_PRO" else 200
+        if distance_points < min_distance: 
+            reasons.append(f"Jarak dengan layer sebelumnya terlalu dekat ({distance_points:.0f} pts < {min_distance} pts)")
         
     # MAX SPREAD SCALPING
     # Dilonggarkan menjadi 50.0 pips khusus untuk akun Demo agar bot bisa menembak
@@ -142,7 +144,8 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         reasons.append(f"Spread terlalu tinggi untuk Scalping ({current_spread:.1f} pips > {max_spread} pips)")
         
     # Risk Management Filters
-    max_pos_check = check_max_positions(symbol, max_allowed=3) # V3 PRO Max 3 Layer
+    max_layers = 5 if TRADING_MODE == "HFT_PRO" else 3
+    max_pos_check = check_max_positions(symbol, max_allowed=max_layers)
     if not max_pos_check["can_trade"]:
         reasons.append(max_pos_check["reason"])
         
@@ -151,8 +154,8 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         reasons.append(daily_loss_check["reason"])
     
     if len(reasons) == 0:
-        min_score_xau = 60 if MODE_PAMER else 80
-        min_score_eur = 60 if MODE_PAMER else 80
+        min_score_xau = 70 if TRADING_MODE == "HFT_PRO" else 80
+        min_score_eur = 70 if TRADING_MODE == "HFT_PRO" else 80
         min_score = min_score_xau if symbol == "XAUUSD" else min_score_eur
         
         if final_score >= min_score: 
@@ -187,11 +190,12 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         from executor import execute_trade
         
         # Dynamic Lot Sizing
-        lot_to_use = 0.05
-        if num_positions == 1:
-            lot_to_use = 0.03
-        elif num_positions == 2:
-            lot_to_use = 0.02
+        if TRADING_MODE == "HFT_PRO":
+            lot_sizes = [0.05, 0.04, 0.03, 0.02, 0.01]
+            lot_to_use = lot_sizes[num_positions] if num_positions < len(lot_sizes) else 0.01
+        else:
+            lot_sizes = [0.05, 0.03, 0.02]
+            lot_to_use = lot_sizes[num_positions] if num_positions < len(lot_sizes) else 0.01
             
         success, ticket_or_err = execute_trade(symbol, direction, sl_price, tp_price, lot=lot_to_use)
         if success:
@@ -202,13 +206,30 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
             
             # Catat trade ke JSON untuk Performance Analyzer
             from performance_logger import log_trade_entry
+            import uuid
             
             trend_h4 = detect_trend_fast(data['H4'])
+            trend_h1 = detect_trend_fast(data['H1']) if 'H1' in data else "UNKNOWN"
+            
+            # 1. Trade ID UUID
+            trade_id = "TRD-" + str(uuid.uuid4()).split("-")[0].upper()
+            
+            # 2. Market Regime
+            if adx_m1 > 25: regime = "TRENDING"
+            elif adx_m1 < 20: regime = "RANGING"
+            else: regime = "VOLATILE"
+            
+            # 3. Account Balance & Equity
+            acc_info = mt5.account_info()
+            balance = acc_info.balance if acc_info else 0.0
+            equity = acc_info.equity if acc_info else 0.0
             
             log_trade_entry(
-                ticket=ticket_or_err, symbol=symbol, direction=direction, price=current_price,
+                trade_id=trade_id, ticket=ticket_or_err, symbol=symbol, direction=direction, price=current_price,
                 session=session_info['session'], spread=current_spread, score=final_score,
-                rsi=rsi_m1, adx=adx_m1, atr=current_atr, trend_h4=trend_h4, candle=current_candle, magic=888
+                rsi=rsi_m1, adx=adx_m1, atr=current_atr, trend_h4=trend_h4, trend_h1=trend_h1,
+                candle=current_candle, strategy_version=TRADING_MODE + "_V1", market_regime=regime, 
+                balance=balance, equity=equity, magic=888
             )
         else:
             send_telegram_message(f"❌ <b>EKSEKUSI GAGAL</b>\nRobot mencoba open posisi {direction} {symbol} tapi MT5 menolak. Error: {ticket_or_err}")
@@ -249,8 +270,10 @@ if __name__ == "__main__":
                 # 0. Cek apakah ada trade yang tertutup untuk direkam ke CSV
                 monitor_closed_trades(magic_number=888)
                 
-                # 1. Trailing Stop (Sangat Ketat: Aktif di 4 pips, trailing tiap 2 pips. Biar sering biru!)
-                trailing_messages = manage_trailing_stops(magic_number=888, trailing_start_pips=4.0, trailing_step_pips=2.0)
+                # 1. Trailing Stop Khusus
+                t_start = 2.0 if TRADING_MODE == "HFT_PRO" else 5.0
+                t_step = 1.0 if TRADING_MODE == "HFT_PRO" else 2.0
+                trailing_messages = manage_trailing_stops(magic_number=888, trailing_start_pips=t_start, trailing_step_pips=t_step)
                 for t_msg in trailing_messages:
                     send_telegram_message(t_msg)
                     
@@ -264,9 +287,10 @@ if __name__ == "__main__":
                 current_time = time.time()
                 if current_time - last_eval_time >= 10:
                     for symbol in symbols:
-                        # MODE RESILIENT SCALPING (Max 3 Posisi per Symbol)
+                        # Cek Max Pos
+                        max_layers = 5 if TRADING_MODE == "HFT_PRO" else 3
                         open_positions = mt5.positions_get(symbol=symbol, magic=888)
-                        if open_positions is not None and len(open_positions) >= 3:
+                        if open_positions is not None and len(open_positions) >= max_layers:
                             continue
                             
                         multi_tf_data = fetch_multi_timeframe(symbol)

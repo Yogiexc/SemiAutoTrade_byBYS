@@ -9,16 +9,18 @@ CSV_FILE = "performance_history.csv"
 
 # Kolom-kolom yang akan dicatat di CSV
 CSV_HEADERS = [
-    "Date", "Ticket", "Symbol", "Type", "Session", "Spread_Cat", 
-    "Score", "Trend_H4", "RSI", "ADX", "ATR", "Candle", "Entry_Price", 
-    "Exit_Price", "MAE", "MFE", "Profit", "Holding_Time_Seconds", 
-    "Exit_Reason", "Magic_Number"
+    "Trade_ID", "Date", "Ticket", "Symbol", "Type", "Session", "Spread_Cat", 
+    "Score", "Trend_H4", "Trend_H1", "RSI", "ADX", "ATR", "Candle", 
+    "Strategy_Version", "Market_Regime", "Balance", "Equity", 
+    "Entry_Price", "Exit_Price", "MAE", "MFE", "Profit", 
+    "Holding_Time_Seconds", "Exit_Reason", "Magic_Number"
 ]
 
-def log_trade_entry(ticket: int, symbol: str, direction: str, price: float, 
+def log_trade_entry(trade_id: str, ticket: int, symbol: str, direction: str, price: float, 
                     session: str, spread: float, score: float, 
-                    rsi: float, adx: float, atr: float, trend_h4: str, 
-                    candle: str, magic: int = 888):
+                    rsi: float, adx: float, atr: float, trend_h4: str, trend_h1: str,
+                    candle: str, strategy_version: str, market_regime: str,
+                    balance: float, equity: float, magic: int = 888):
     """
     Menyimpan konteks trade yang baru dibuka ke dalam JSON sementara.
     """
@@ -44,13 +46,19 @@ def log_trade_entry(ticket: int, symbol: str, direction: str, price: float,
         "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Entry_Price": price,
         "Session": session,
+        "Trade_ID": trade_id,
         "Spread_Cat": spread_cat,
         "Score": score,
         "Trend_H4": trend_h4,
+        "Trend_H1": trend_h1,
         "RSI": rsi,
         "ADX": adx,
         "ATR": atr,
         "Candle": candle,
+        "Strategy_Version": strategy_version,
+        "Market_Regime": market_regime,
+        "Balance": balance,
+        "Equity": equity,
         "Magic_Number": magic,
         "MAE": 0.0,  # Max Adverse Excursion
         "MFE": 0.0   # Max Favorable Excursion
@@ -148,12 +156,17 @@ def monitor_closed_trades(magic_number: int = 888):
                     writer.writerow(CSV_HEADERS)
                     
             row = [
-                ctx.get("Date"), ctx.get("Ticket"), ctx.get("Symbol"), ctx.get("Type"),
-                ctx.get("Session"), ctx.get("Spread_Cat"), ctx.get("Score"),
-                ctx.get("Trend_H4", "-"), round(ctx.get("RSI", 0), 2), round(ctx.get("ADX", 0), 2), 
-                round(ctx.get("ATR", 0), 5), ctx.get("Candle"), ctx.get("Entry_Price"), 
-                exit_price, round(ctx.get("MAE", 0.0), 2), round(ctx.get("MFE", 0.0), 2), 
-                round(profit, 2), round(holding_time, 1), exit_reason, ctx.get("Magic_Number")
+                ctx.get("Trade_ID", "UNKNOWN"), ctx.get("Date"), ctx.get("Ticket"), 
+                ctx.get("Symbol"), ctx.get("Type"), ctx.get("Session"), 
+                ctx.get("Spread_Cat"), ctx.get("Score"),
+                ctx.get("Trend_H4", "-"), ctx.get("Trend_H1", "-"), 
+                round(ctx.get("RSI", 0), 2), round(ctx.get("ADX", 0), 2), 
+                round(ctx.get("ATR", 0), 5), ctx.get("Candle"), 
+                ctx.get("Strategy_Version", "V2.x"), ctx.get("Market_Regime", "-"),
+                round(ctx.get("Balance", 0.0), 2), round(ctx.get("Equity", 0.0), 2),
+                ctx.get("Entry_Price"), exit_price, round(ctx.get("MAE", 0.0), 2), 
+                round(ctx.get("MFE", 0.0), 2), round(profit, 2), 
+                round(holding_time, 1), exit_reason, ctx.get("Magic_Number")
             ]
             
             try:
