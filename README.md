@@ -9,8 +9,13 @@ A semi-automatic algorithmic trading system written in Python that controls Meta
 
 > Educational project. Use demo accounts only until results are statistically validated. Not financial advice.
 
+## Demo
+
+Screen recording of the bot running on MetaTrader 5: [MetaQuotes_GIF.mp4](MetaQuotes_GIF.mp4) (click to play on GitHub).
+
 ## Contents
 
+- [Demo](#demo)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Trading Modes](#trading-modes)
