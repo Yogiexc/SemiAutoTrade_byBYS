@@ -11,7 +11,7 @@ A semi-automatic algorithmic trading system written in Python that controls Meta
 
 ## Demo
 
-Screen recording of the bot running on MetaTrader 5: [MetaQuotes_GIF.mp4](MetaQuotes_GIF.mp4) (click to play on GitHub).
+![SemiAutoTrade Demo](demo.gif)
 
 ## Contents
 
