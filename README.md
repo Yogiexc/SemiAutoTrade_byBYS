@@ -111,3 +111,36 @@ Selalu gunakan **Akun Demo (Paper Trading)** selama beberapa minggu untuk memaha
 
 **Happy Trading & Salam Cuan! 📈**
 *Built with logic, sweat, and lots of coffee by BYS.*
+
+
+---
+
+## 🧪 Engineering Highlights (Portfolio)
+
+| Area | What was built |
+|---|---|
+| **Data pipeline** | Logger V4: every trade gets a `Trade_ID`, `Strategy_Version`, `Market_Regime`, balance/equity snapshot, MAE/MFE, and exit reason inferred from MT5 deal history. |
+| **Experiment framework** | Strategy parameters live in `mt5-scalper/experiments/*.json` (e.g. `HFT_PRO_V1`), so every change is versioned and comparable. |
+| **Reliability** | Closed-trade detection recovers trades that closed while the bot was offline. Telegram alerts for start, entry, trailing and close. |
+| **Security** | Secrets only via `.env` (git-ignored). No tokens in source. |
+
+### Roadmap
+1. Collect 500 clean demo trades (strategy frozen, bug fixes only).
+2. Analyze by session / regime / score, optimize one parameter per experiment.
+3. Emergency SL on every order, then free 24/7 hosting.
+
+### Quick start
+```bash
+pip install MetaTrader5 pandas python-dotenv requests
+cp .env.example .env   # fill TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
+cd mt5-scalper && python main.py
+```
+
+> ⚠️ Educational project. Demo accounts only until results are validated. Not financial advice.
+
+### Experiment Log
+| Experiment | Mode | Result (demo, 1h) | Finding |
+|---|---|---|---|
+| 001 | `TURBO_M1` | 102 trades, 58% win rate, net -42.47 | Win rate was fine but avg loss (-2.37) was 2x avg win (+1.01). The hard `-$3` auto-close caused most of the loss (36 trades, -78.57); trades closed via normal SL/TP/trailing were net positive. |
+
+Next experiment: remove the hard USD cut-loss, reduce XAUUSD lot, trade only London/New York sessions.

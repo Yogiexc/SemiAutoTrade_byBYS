@@ -23,7 +23,7 @@ def send_telegram_message(message: str):
     }
     
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         if response.status_code == 200:
             print("[+] Berhasil mengirim pesan ke Telegram")
             return True

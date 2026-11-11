@@ -9,7 +9,9 @@ from datetime import datetime, timedelta
 # Opsi 1: "HFT_PRO" (High Frequency Trading - Satset, Lot Berjenjang 5 Layer, Trailing 2 Pips)
 # Opsi 2: "SWING_SAFE" (Aman, Cooldown 5 Menit, Max 3 Layer, Trailing 5 Pips)
 # =========================================================
-TRADING_MODE = "HFT_PRO"
+# Opsi 3: "TURBO_M1" (Sesi cepat ~1 jam di DEMO: filter longgar, cooldown 10 dtk, TP kecil/cepat, SL lebih ketat)
+TRADING_MODE = "TURBO_M1"
+TURBO = TRADING_MODE == "TURBO_M1"
 
 def initialize_mt5():
     if not mt5.initialize():
@@ -75,6 +77,28 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
     
     # Volatilitas (ATR) M1 untuk hitung SL/TP
     current_atr = calculate_atr(df_m1, period=14).iloc[-1]
+
+    # TURBO: koreksi arah (EMA terlambat -> pakai posisi harga & momentum candle)
+    if TURBO:
+        from analyzer import calculate_ema
+        ema9_m1 = calculate_ema(df_m1, 9).iloc[-1]
+        closes = df_m1['close'].iloc[-4:].values
+        opens = df_m1['open'].iloc[-4:].values
+        last_body = df_m1['close'].iloc[-1] - df_m1['open'].iloc[-1]
+        down_mom = all(closes[i] < closes[i-1] for i in range(1, len(closes)))
+        up_mom = all(closes[i] > closes[i-1] for i in range(1, len(closes)))
+        # Harga sudah di bawah EMA9 -> batalkan poin BUY dari EMA, beri SELL
+        if current_price < ema9_m1:
+            score_buy = max(0, score_buy - 30)
+            score_sell += 15
+        elif current_price > ema9_m1:
+            score_sell = max(0, score_sell - 30)
+            score_buy += 15
+        if down_mom: score_sell += 15; score_buy = max(0, score_buy - 15)
+        if up_mom: score_buy += 15; score_sell = max(0, score_sell - 15)
+        # Candle terakhir besar berlawanan arah -> blokir
+        if last_body < -current_atr: score_buy = 0
+        if last_body > current_atr: score_sell = 0
         
     # === EVALUASI FINAL ===
     direction = "BUY" if score_buy > score_sell else "SELL"
@@ -103,10 +127,10 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
     from risk_manager import check_max_positions, check_daily_loss, check_news_filter
     
     # HARD FILTERS
-    if not session_info['can_trade']:
+    if not session_info['can_trade'] and not TURBO:
         reasons.append(f"Di luar jam trading (Sesi: {session_info['session']})")
         
-    batas_adx = 20 if TRADING_MODE == "HFT_PRO" else 25
+    batas_adx = 15 if TURBO else (20 if TRADING_MODE == "HFT_PRO" else 25)
     if adx_m1 < batas_adx:
         reasons.append(f"Sideways Detected! ADX rendah ({adx_m1:.2f} < {batas_adx}), Dilarang Entry!")
         
@@ -123,9 +147,9 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
             reasons.append(f"Bahaya Reversal! Muncul candle naik ({current_candle}). Dilarang SELL!")
         
     import time
-    batas_cooldown = 30 if TRADING_MODE == "HFT_PRO" else 300
+    batas_cooldown = 10 if TURBO else (30 if TRADING_MODE == "HFT_PRO" else 300)
     if time.time() - last_entry_time < batas_cooldown: 
-        waktu_tunggu = "30 Detik" if TRADING_MODE == "HFT_PRO" else "5 Menit"
+        waktu_tunggu = f"{batas_cooldown} Detik"
         reasons.append(f"Masih dalam masa Cooldown (Tunggu {waktu_tunggu} sejak open terakhir)")
         
     num_positions = len(open_positions) if open_positions else 0
@@ -133,7 +157,7 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         last_pos_price = open_positions[-1].price_open
         point = mt5.symbol_info(symbol).point
         distance_points = abs(current_price - last_pos_price) / point
-        min_distance = 50 if TRADING_MODE == "HFT_PRO" else 200
+        min_distance = 20 if TURBO else (50 if TRADING_MODE == "HFT_PRO" else 200)
         if distance_points < min_distance: 
             reasons.append(f"Jarak dengan layer sebelumnya terlalu dekat ({distance_points:.0f} pts < {min_distance} pts)")
         
@@ -144,7 +168,7 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         reasons.append(f"Spread terlalu tinggi untuk Scalping ({current_spread:.1f} pips > {max_spread} pips)")
         
     # Risk Management Filters
-    max_layers = 5 if TRADING_MODE == "HFT_PRO" else 3
+    max_layers = 3 if TURBO else (5 if TRADING_MODE == "HFT_PRO" else 3)
     max_pos_check = check_max_positions(symbol, max_allowed=max_layers)
     if not max_pos_check["can_trade"]:
         reasons.append(max_pos_check["reason"])
@@ -154,8 +178,8 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         reasons.append(daily_loss_check["reason"])
     
     if len(reasons) == 0:
-        min_score_xau = 70 if TRADING_MODE == "HFT_PRO" else 80
-        min_score_eur = 70 if TRADING_MODE == "HFT_PRO" else 80
+        min_score_xau = 60 if TURBO else (70 if TRADING_MODE == "HFT_PRO" else 80)
+        min_score_eur = 60 if TURBO else (70 if TRADING_MODE == "HFT_PRO" else 80)
         min_score = min_score_xau if symbol == "XAUUSD" else min_score_eur
         
         if final_score >= min_score: 
@@ -169,8 +193,9 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
     report = ""
     if recommendation != "WAIT":
         # SL/TP Diperlebar agar tidak tersentuh oleh spread
-        sl_pips = (current_atr * 3.0)
-        tp_pips = (current_atr * 6.0)
+        # TURBO: TP dekat (cepat kena, win rate naik), SL lebih ketat
+        sl_pips = (current_atr * 1.2) if TURBO else (current_atr * 3.0)
+        tp_pips = (current_atr * 1.0) if TURBO else (current_atr * 6.0)
         
         sl_price = current_price - sl_pips if direction == "BUY" else current_price + sl_pips
         tp_price = current_price + tp_pips if direction == "BUY" else current_price - tp_pips
@@ -190,7 +215,10 @@ def evaluate_scalper_strategy(symbol: str, data: dict, open_positions: tuple, la
         from executor import execute_trade
         
         # Dynamic Lot Sizing
-        if TRADING_MODE == "HFT_PRO":
+        if TURBO:
+            lot_sizes = [0.05, 0.03, 0.02]
+            lot_to_use = lot_sizes[num_positions] if num_positions < len(lot_sizes) else 0.01
+        elif TRADING_MODE == "HFT_PRO":
             lot_sizes = [0.05, 0.04, 0.03, 0.02, 0.01]
             lot_to_use = lot_sizes[num_positions] if num_positions < len(lot_sizes) else 0.01
         else:
@@ -279,16 +307,16 @@ if __name__ == "__main__":
                     
                 # 2. Auto Close (Take Profit / Cut Loss Darurat)
                 # Hyper Scalper Brutal V3 (Max 3 Posisi): Lot 0.05. Target Cepat +$4.00, Max Loss -$20.00
-                auto_close_messages = auto_close_all(magic_number=888, target_profit_usd=4.0, max_loss_usd=-20.0)
+                auto_close_messages = auto_close_all(magic_number=888, target_profit_usd=(2.0 if TURBO else 4.0), max_loss_usd=(-3.0 if TURBO else -20.0))
                 for ac_msg in auto_close_messages:
                     send_telegram_message(ac_msg)
                     
                 # === EVALUASI MARKET (Tiap 10 Detik) ===
                 current_time = time.time()
-                if current_time - last_eval_time >= 10:
+                if current_time - last_eval_time >= (3 if TURBO else 10):
                     for symbol in symbols:
                         # Cek Max Pos
-                        max_layers = 5 if TRADING_MODE == "HFT_PRO" else 3
+                        max_layers = 3 if TURBO else (5 if TRADING_MODE == "HFT_PRO" else 3)
                         open_positions = mt5.positions_get(symbol=symbol, magic=888)
                         if open_positions is not None and len(open_positions) >= max_layers:
                             continue

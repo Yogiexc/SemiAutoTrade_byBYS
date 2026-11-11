@@ -87,7 +87,10 @@ def monitor_closed_trades(magic_number: int = 888):
         
     # Ambil posisi yang saat ini sedang floating di MT5
     positions = mt5.positions_get(magic=magic_number)
-    open_pos_dict = {str(pos.ticket): pos for pos in positions} if positions else {}
+    if positions is None:
+        # MT5 gagal membalas: jangan anggap semua trade tertutup (hindari baris palsu di CSV)
+        return
+    open_pos_dict = {str(pos.ticket): pos for pos in positions}
     
     closed_tickets = []
     json_updated = False
@@ -95,7 +98,10 @@ def monitor_closed_trades(magic_number: int = 888):
     now = datetime.now()
     
     # Ambil deals history 7 hari terakhir untuk cek closed trade
-    from_date = datetime.fromtimestamp(now.timestamp() - (7 * 24 * 3600))
+    # Mulai dari entry trade tertua yang masih aktif (bukan fixed 7 hari),
+    # supaya trade yang ditutup saat bot mati tetap ketemu deal-nya.
+    oldest_entry = min((c.get("Entry_Time_Unix", now.timestamp()) for c in active_trades.values()), default=now.timestamp())
+    from_date = datetime.fromtimestamp(oldest_entry - 3600)
     history_deals = mt5.history_deals_get(from_date, now)
     
     for str_ticket, ctx in active_trades.items():
