@@ -1,1 +1,27 @@
-{}
+{
+    "11339071149": {
+        "Ticket": 11339071149,
+        "Symbol": "XAUUSD",
+        "Type": "BUY",
+        "Entry_Time_Unix": 1794369926.501962,
+        "Date": "2026-11-11 11:05:26",
+        "Entry_Price": 4048.48,
+        "Session": "Asian/Sydney (NO TRADE)",
+        "Trade_ID": "TRD-F5E0B33B",
+        "Spread_Cat": "NORMAL",
+        "Score": 95,
+        "Trend_H4": "SELL",
+        "Trend_H1": "SELL",
+        "RSI": 60.33057851239638,
+        "ADX": 17.433731926200117,
+        "ATR": 1.4014285714285961,
+        "Candle": "Inside Bar",
+        "Strategy_Version": "TURBO_M1_V1",
+        "Market_Regime": "RANGING",
+        "Balance": 99956.38,
+        "Equity": 99955.48,
+        "Magic_Number": 888,
+        "MAE": -2.4,
+        "MFE": 0.35
+    }
+}
