@@ -1,146 +1,157 @@
-# 🤖 Hedge Fund Sniper Algo - Semi Auto Trade
+# SemiAutoTrade by BYS
 
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![MetaTrader 5](https://img.shields.io/badge/MetaTrader%205-Integrated-success.svg)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+![MetaTrader 5](https://img.shields.io/badge/MetaTrader%205-integrated-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-demo%20testing-orange.svg)
 
-Selamat datang di **Hedge Fund Sniper Algo**, sebuah sistem Algorithmic Trading mutakhir yang dibangun dengan Python untuk mengontrol MetaTrader 5 (MT5). Bot ini bukan sekadar *Expert Advisor* (EA) biasa, melainkan otak analitik sekelas institusi yang berjalan di latar belakang untuk memberikan analisis, rekomendasi, hingga eksekusi *auto-pilot* 24/7!
+A semi-automatic algorithmic trading system written in Python that controls MetaTrader 5 (MT5). It combines multi-timeframe signal scoring, strict risk management, Telegram notifications, and a quant-style trade logging pipeline for data-driven strategy optimization.
 
----
+> Educational project. Use demo accounts only until results are statistically validated. Not financial advice.
 
-## 🌟 Fitur Utama (Kasta Tertinggi)
+## Contents
 
-Sistem ini dibangun berdasarkan 4 Pilar Utama layaknya manajemen dana profesional (*Prop-Firm Ready*):
+- [Features](#features)
+- [Architecture](#architecture)
+- [Trading Modes](#trading-modes)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the Bot](#running-the-bot)
+- [Trade Logging and Analysis](#trade-logging-and-analysis)
+- [Experiment Log](#experiment-log)
+- [Roadmap](#roadmap)
+- [Disclaimer](#disclaimer)
 
-1. **⚔️ Pilar 1: Multi-Timeframe Momentum**
-   - Menghitung Trend Jangka Panjang (H4) memakai EMA 50 & 200.
-   - Mengkalibrasi area *Support & Resistance* (H1).
-   - Menemukan momentum pemicu memakai RSI, MACD, dan pola *Candlestick* (M15 & M5).
+## Features
 
-2. **🛡️ Pilar 2: Risk Management (Anti Margin Call)**
-   - **Daily Loss Protection**: Mengunci bot jika kerugian hari ini menyentuh batas (misal -3.0%).
-   - **Max Open Position**: Mencegah *over-trading* (maksimal memegang 2 posisi bersamaan).
-   - **Spread Filter**: Secara otomatis memblokir eksekusi saat spread melar (misal saat *news* atau pergantian sesi).
+**Signal engine**
+- Multi-timeframe analysis: H4 / H1 trend, M15 / M5 momentum, M1 entries.
+- Indicators: EMA, RSI, ADX, ATR, Bollinger Bands, MACD, candlestick patterns.
+- Smart Money Concepts: Break of Structure (BOS), Change of Character (CHOCH), Fair Value Gap (FVG).
+- Confidence scoring (0 to 100) instead of simple if/else rules.
 
-3. **👁️ Pilar 3: Smart Money Concepts (SMC)**
-   - Mendeteksi jejak "Paus" dan Bank Sentral di dalam *chart*.
-   - **BOS (Break of Structure)** & **CHOCH (Change of Character)**: Konfirmasi pembalikan atau penerusan tren secara fraktal.
-   - **FVG (Fair Value Gap)**: Mendeteksi anomali harga dan likuiditas akibat HFT (*High-Frequency Trading*).
+**Risk management**
+- Daily loss protection.
+- Maximum open positions and layered entries with graded lot sizes.
+- Spread, ADX (sideways), RSI (overbought / oversold) and reversal-candle filters.
+- ATR-based stop loss and take profit, break-even and trailing stop.
+- Magic number isolation, so manual orders are never touched.
 
-4. **💰 Pilar 4: Trade Management & Telegram Bot**
-   - **Magic Number (777/888)**: Bot tidak akan mengganggu order manual milikmu.
-   - **Auto Break-Even (Trailing Stop)**: Memindahkan Stop Loss ke harga Entry secara otomatis jika sudah *profit* (uangmu 100% aman).
-   - **Telegram Reports**: Mengirimkan sinyal `WAIT`, `TARGET ACQUIRED`, `POSITION OPENED`, hingga 📊 **DAILY REPORT** (Win Rate & Profit Harian) langsung ke HP-mu!
+**Operations**
+- Telegram alerts for start, entry, trailing, close and daily report.
+- Closed-trade detection that also recovers trades closed while the bot was offline.
 
-5. **📊 Pilar 5: Institutional Grade Quant Data (NEW)**
-   - **Performance Analyzer (Logger V2)**: Melacak otomatis setiap metrik *trading* (RSI, ADX, Spread, Trend H4) ke dalam `performance_history.csv` untuk keperluan evaluasi *Quant*.
-   - **Tracking MAE & MFE**: Menganalisis *Floating Loss* terdalam (MAE) dan *Floating Profit* tertinggi (MFE) untuk menyempurnakan penempatan *Stop Loss* & *Take Profit*.
-   - **Show-Off Mode (Saklar Pamer)**: Opsi rahasia untuk melonggarkan keamanan (*cooldown* 10 detik, abaikan *sideways*) khusus untuk keperluan demo/pamer ke teman, tanpa harus mengubah *code* inti.
+**Data pipeline (Logger V4)**
+- Unique `Trade_ID`, `Strategy_Version` and `Market_Regime` per trade.
+- Balance and equity snapshot at entry.
+- MAE / MFE tracking, holding time, and exit reason (SL, TP, trailing, auto-close, manual).
+- Versioned strategy parameters in `mt5-scalper/experiments/`.
 
----
+## Architecture
 
-## 🛠️ Cara Kerja & Arsitektur
+```text
+mt5-scalper/
+  main.py               entry point, scoring and execution loop
+  analyzer.py           indicators and pattern detection
+  data_fetcher.py       multi-timeframe data from MT5
+  executor.py           order execution
+  trade_manager.py      trailing stop and auto-close
+  risk_manager.py       daily loss, max positions, news filter
+  performance_logger.py trade logging (CSV) with MAE / MFE
+  telegram_bot.py       notifications
+  experiments/          versioned strategy configs
+mt5-connector/          sniper mode (H4 / M15, SMC based)
+backend/                API service (Docker)
+docs/                   additional documentation
+```
 
-Sistem ini memakai konsep **Scoring (0 - 100)**:
-Algoritma tidak memakai aturan IF-THEN murahan. Ia mengumpulkan nilai dari SMC (Bobot 30%), Trend H4 (Bobot 20%), Momentum M15 (Bobot 20%), S/R H1 (Bobot 15%), dan Volatilitas M5 (Bobot 15%). 
+Python connects to MT5 through the official `MetaTrader5` package:
 
-Hanya jika skor mencapai batas **Sniper (85%)**, robot akan menarik pelatuknya!
-
-### Bagaimana Python terhubung ke MT5?
-Sangat mudah! Kami menggunakan library resmi `MetaTrader5` dari MetaQuotes.
-Kode ajaibnya hanyalah:
 ```python
 import MetaTrader5 as mt5
 
-# Mengkoneksikan Python ke Terminal MT5 yang sedang terbuka di Windows
 if not mt5.initialize():
-    print("Gagal konek ke MT5!")
+    raise RuntimeError(f"MT5 connection failed: {mt5.last_error()}")
 ```
-Setelah terkoneksi, Python bisa menyedot jutaan baris *historical data* dalam sepersekian detik menggunakan `mt5.copy_rates_from_pos()`.
 
----
+## Trading Modes
 
-## 🚀 Cara Instalasi & Penggunaan
+Set `TRADING_MODE` at the top of `mt5-scalper/main.py`.
 
-1. **Clone Repository ini**
-   ```bash
-   git clone https://github.com/Yogiexc/SemiAutoTrade_byBYS.git
-   cd SemiAutoTrade_byBYS
-   ```
+| Mode | Style | Cooldown | Max layers | Notes |
+|---|---|---|---|---|
+| `SWING_SAFE` | Conservative | 5 min | 3 | Higher score threshold |
+| `HFT_PRO` | High activity M1 scalper | 30 s | 5 | Graded lots, tight trailing |
+| `TURBO_M1` | Fast demo session | 10 s | 3 | Relaxed filters, close TP, ATR stop |
 
-2. **Siapkan Virtual Environment & Dependencies**
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\activate
-   pip install pandas numpy MetaTrader5 python-dotenv requests
-   ```
+Note: this is a high-activity momentum scalper on Python and MT5, not true high-frequency trading.
 
-3. **Siapkan Telegram Bot (Penting!)**
-   - Buat bot lewat `@BotFather` di Telegram.
-   - Buat file `.env` di dalam folder `mt5-connector` (dan `mt5-scalper`).
-   - Isi file `.env` dengan format:
-     ```env
-     TELEGRAM_BOT_TOKEN=token_bot_kamu_di_sini
-     TELEGRAM_CHAT_ID=chat_id_kamu_di_sini
-     ```
+## Installation
 
-4. **Pilih Mode Trading dan Jalankan Bot**
-   - Pastikan aplikasi **MetaTrader 5 Windows** sedang terbuka dan sudah *Login*.
-   - Nyalakan tombol **Algo Trading** (AutoTrading) di menu atas MT5.
-   - Buka terminal, dan pilih mode mana yang ingin kamu jalankan:
+Requirements: Windows, MetaTrader 5 terminal (logged in), Python 3.9+.
 
-   **Opsi A: SNIPER MODE (Aman, Santai, H4/M15)**
-   ```bash
-   cd mt5-connector
-   python main.py
-   ```
-
-   **Opsi B: SCALPER MODE (Barbar, Cepat, HFT M1)**
-   ```bash
-   cd mt5-scalper
-   ..\mt5-connector\venv\Scripts\python.exe main.py
-   ```
-
----
-
-## ⚠️ Disclaimer
-
-Sistem ini awalnya dirancang sebagai asisten semi-otomatis untuk **Edukasi & Analisis Data**, yang kemudian dikembangkan menjadi *Full Auto-Pilot*. Kami **TIDAK BERTANGGUNG JAWAB** atas segala kerugian finansial yang terjadi akibat penggunaan *script* ini di akun *Real*. 
-
-Selalu gunakan **Akun Demo (Paper Trading)** selama beberapa minggu untuk memahami karakteristik algoritma sebelum mempertaruhkan uang riil. *Trading* itu kejam, gunakan akal sehat, bukan emosi!
-
-**Happy Trading & Salam Cuan! 📈**
-*Built with logic, sweat, and lots of coffee by BYS.*
-
-
----
-
-## 🧪 Engineering Highlights (Portfolio)
-
-| Area | What was built |
-|---|---|
-| **Data pipeline** | Logger V4: every trade gets a `Trade_ID`, `Strategy_Version`, `Market_Regime`, balance/equity snapshot, MAE/MFE, and exit reason inferred from MT5 deal history. |
-| **Experiment framework** | Strategy parameters live in `mt5-scalper/experiments/*.json` (e.g. `HFT_PRO_V1`), so every change is versioned and comparable. |
-| **Reliability** | Closed-trade detection recovers trades that closed while the bot was offline. Telegram alerts for start, entry, trailing and close. |
-| **Security** | Secrets only via `.env` (git-ignored). No tokens in source. |
-
-### Roadmap
-1. Collect 500 clean demo trades (strategy frozen, bug fixes only).
-2. Analyze by session / regime / score, optimize one parameter per experiment.
-3. Emergency SL on every order, then free 24/7 hosting.
-
-### Quick start
 ```bash
-pip install MetaTrader5 pandas python-dotenv requests
-cp .env.example .env   # fill TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
-cd mt5-scalper && python main.py
+git clone https://github.com/Yogiexc/SemiAutoTrade_byBYS.git
+cd SemiAutoTrade_byBYS
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r mt5-scalper/requirements.txt
 ```
 
-> ⚠️ Educational project. Demo accounts only until results are validated. Not financial advice.
+## Configuration
 
-### Experiment Log
-| Experiment | Mode | Result (demo, 1h) | Finding |
+Copy `.env.example` to `.env` inside `mt5-scalper` (and `mt5-connector` if used):
+
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+```
+
+Never commit `.env`. It is already listed in `.gitignore`. Create the bot with `@BotFather` and revoke the token immediately if it is ever exposed.
+
+In MT5, enable **Algo Trading** (toolbar button, `Ctrl+E`). Otherwise orders are rejected with error code 10027.
+
+## Running the Bot
+
+Scalper:
+
+```bash
+cd mt5-scalper
+python main.py
+```
+
+Sniper (swing style):
+
+```bash
+cd mt5-connector
+python main.py
+```
+
+## Trade Logging and Analysis
+
+Every closed trade is appended to `mt5-scalper/performance_history.csv` with these columns:
+
+`Trade_ID, Date, Ticket, Symbol, Type, Session, Spread_Cat, Score, Trend_H4, Trend_H1, RSI, ADX, ATR, Candle, Strategy_Version, Market_Regime, Balance, Equity, Entry_Price, Exit_Price, MAE, MFE, Profit, Holding_Time_Seconds, Exit_Reason, Magic_Number`
+
+Analyze by session, regime, score band and exit reason to find the bottleneck, change one parameter, then compare with the same number of trades.
+
+## Experiment Log
+
+| ID | Mode | Result (demo, 1 hour) | Finding |
 |---|---|---|---|
-| 001 | `TURBO_M1` | 102 trades, 58% win rate, net -42.47 | Win rate was fine but avg loss (-2.37) was 2x avg win (+1.01). The hard `-$3` auto-close caused most of the loss (36 trades, -78.57); trades closed via normal SL/TP/trailing were net positive. |
+| 001 | `TURBO_M1` | 102 trades, 58% win rate, net -42.47 | Average loss (-2.37) was more than twice the average win (+1.01). The hard USD auto-close accounted for most of the loss (36 trades, -78.57), while trades closed by normal SL, TP and trailing were net positive. |
 
-Next experiment: remove the hard USD cut-loss, reduce XAUUSD lot, trade only London/New York sessions.
+Next experiment: remove the hard USD cut-loss, reduce XAUUSD lot size, trade only the London and New York sessions.
+
+## Roadmap
+
+1. Collect 500 clean demo trades with a frozen strategy (bug fixes only).
+2. Analyze by session, regime and score, then optimize one parameter per experiment.
+3. Add an emergency stop loss on every order.
+4. Move to 24/7 hosting (Windows VPS) after the strategy is validated.
+
+## Disclaimer
+
+This software is provided for education and data analysis. The authors are not responsible for any financial loss caused by using it on a live account. Test on a demo account first and never risk money you cannot afford to lose.
+
+Built by Bryan Yogie Saputra (BYS). Licensed under MIT.
